@@ -1,3 +1,5 @@
+#include <cstdlib>
+#include <functional>
 template <typename T>
 struct vector
 {
@@ -56,7 +58,9 @@ private:
     void new_buffer(size_t new_capacity);
 
 private:
-    T* data_;
+    size_t static const DEFAULT_INITIAL = 100;
+    size_t static const ENSURE_COEFFICIENT = 3;
     size_t size_;
     size_t capacity_;
+    T* data_;
 };
