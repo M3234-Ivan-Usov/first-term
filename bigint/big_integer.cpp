@@ -7,26 +7,23 @@
 
 __extension__ typedef unsigned __int128 uint128_t;
 
-big_integer::big_integer() {
+big_integer::big_integer() : sign(false) {
     value.push_back(0);
-    sign = false;
 }
 
-big_integer::big_integer(big_integer const &other) {
-    value = other.value;
-    sign = other.sign;
+big_integer::big_integer(big_integer const &other) : sign(other.sign), value(other.value) {
 }
 
 big_integer::big_integer(int a) {
+    sign = (a < 0) ? true : false;
     if (a == INT32_MIN) {
         value.push_back(static_cast<uint32_t>(INT32_MAX) + 1);
     } else {
         value.push_back(static_cast<uint32_t>(abs(a)));
     }
-    sign = (a < 0) ? true : false;
 }
 
-big_integer::big_integer(std::string const &str) {
+big_integer::big_integer(std::string const &str) : sign(false){
     value.push_back(0);
     big_integer position = 1;
     for (auto i = static_cast<int32_t>(str.length()) - 1; i >= 0; --i) {
@@ -63,8 +60,8 @@ big_integer big_integer::binary() const {
     }
     big_integer res;
     res.value.pop_back();
-    for (auto i : value) {
-        res.value.push_back(~i);
+    for (size_t i = 0; i < value.size(); ++i) {
+        res.value.push_back(~value[i]);
     }
     res.value.push_back(UINT32_MAX);
     res += 1;
@@ -78,8 +75,8 @@ big_integer big_integer::complementation() const {
     }
     big_integer res;
     res.value.pop_back();
-    for (auto i : value) {
-        res.value.push_back(~i);
+    for (size_t i = 0; i < value.size(); ++i) {
+        res.value.push_back(~value[i]);
     }
     res += 1;
     res.trim();
@@ -396,8 +393,8 @@ big_integer operator<<(big_integer const &a, int b) {
     for (uint32_t i = 0; i < shift; i++) {
         result.value.push_back(0);
     }
-    for (auto i : a.value) {
-        result.value.push_back(i);
+    for (size_t i = 0; i < a.value.size(); ++i) {
+        result.value.push_back(a.value[i]);
     }
     uint32_t remainder = 0;
     for (size_t i = shift; i < result.value.size(); ++i) {
@@ -480,6 +477,12 @@ bool operator<(big_integer const &a, big_integer const &b) {
         return false;
     }
     bool reverse = a.sign;
+    if (a.value.size()< b.value.size()) {
+        return true^reverse;
+    }
+    if (b.value.size() < a.value.size()) {
+        return false^reverse;
+    }
     for (auto i = static_cast<int32_t>(a.value.size()) - 1; i >= 0; --i) {
         auto index = static_cast<size_t>(i);
         if (a.value[index] < b.value[index]) {
