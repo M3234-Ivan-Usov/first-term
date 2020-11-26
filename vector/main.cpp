@@ -345,7 +345,7 @@ TEST(performance, insert)
 }
 
 TEST(correctness, erase) {
-  size_t const N = 500;
+  size_t const N = 20;
   {
     for (size_t i = 0; i != N; ++i) {
       vector<element<size_t>> a;
