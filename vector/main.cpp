@@ -1,9 +1,6 @@
 #include "vector.h"
 #include "gtest/gtest.h"
 #include <unordered_set>
-#include <memory>
-#include <new>
-#include <iostream>
 
 template
 struct vector<int>;

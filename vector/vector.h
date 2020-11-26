@@ -7,51 +7,42 @@
 template <typename T>
 struct vector
 {
-    typedef T* iterator;
-    typedef T const* const_iterator;
-    typedef std::allocator<T> allocator;
+    using iterator = T*;
+    using const_iterator = T const*;
 
-    vector() :
-        size_(0), capacity_(0), data_(nullptr) {}
+    vector() : size_(0), capacity_(0), data_(nullptr) {}
 
-    vector(vector const& other) :
-        size_(other.size_), capacity_(other.size_), data_(nullptr) {
-        size_t constructed = 0;
-        try {
-            if (!other.empty()) {
-                data_ = mem_allocator.allocate(capacity_);
+    vector(vector const& other) : size_(other.size_), capacity_(other.size_), data_(nullptr) {
+        if (!other.empty()) {
+            size_t constructed = 0;
+            try {
+                data_ = allocator.allocate(capacity_);
                 for (; constructed < size_; ++constructed) {
-                    mem_allocator.construct(data_ + constructed,
-                                            other.data_[constructed]);
+                     allocator.construct_at(data_ + constructed, other.data_[constructed]);
+               }
+            } catch (...) {
+                if (data_ != nullptr) {
+                    allocator.destroy_n(data_, constructed);
+                    data_ = allocator.deallocate(data_, capacity_);
                 }
+                size_ = 0, capacity_ = 0;
+                throw std::runtime_error("Exception in copy constructor");
             }
-        } catch (...) {
-            if (data_ != nullptr) {
-                std::destroy_n(data_, constructed);
-                mem_allocator.deallocate(data_, capacity_);
-                data_ = nullptr;
-            }
-            size_ = 0, capacity_ = 0;
-            throw std::runtime_error("Exception in copy constructor");
         }
     }
 
     vector& operator=(vector const& other) {
-        try {
-            vector<T> temp(other);
-            full_destroy();
-            capacity_ = 0;
-            size_ = 0;
-            swap(temp);
-        }
-        catch (...) {
-            throw std::runtime_error("Exception in operator=");
-        }
+        vector<T> temp(other);
+        swap(temp);
         return *this;
     }
 
     ~vector() {
-        full_destroy();
+        clear();
+        if (data_ != nullptr) {
+            data_ = allocator.deallocate(data_, capacity_);
+            capacity_ = 0;
+        }
     }
 
     T& operator[](size_t i) {
@@ -91,17 +82,12 @@ struct vector
     }
 
     void push_back(T const& element) {
-        T val = element;
         if (size_ == capacity_) {
-            try {
-                push_back_realloc(val);
-            }
-            catch(...) {
-                throw std::runtime_error("Exception in push_back()");
-            }
+            T value = element;
+            push_back_realloc(value);
         }
         else {
-            mem_allocator.construct(data_ + size_, val);
+            allocator.construct_at(data_ + size_, element);
             size_++;
         }
     }
@@ -109,7 +95,7 @@ struct vector
     void pop_back() {
         if (!empty()) {
             size_--;
-            std::destroy_at(end());
+            allocator.destroy_at(end());
         }
     }
 
@@ -123,64 +109,48 @@ struct vector
 
     void reserve(size_t new_size) {
         if (new_size > capacity_) {
-            try {
-                new_buffer(new_size);
-            }
-            catch(...) {
-                throw std::runtime_error("Exception in reserve()");
-            }
+            new_buffer(new_size);
         }
     }
 
     void shrink_to_fit() {
         if (empty() && data_!= nullptr) {
-            mem_allocator.deallocate(data_, capacity_);
-            data_ = nullptr;
+            data_ = allocator.deallocate(data_, capacity_);
+            capacity_ = 0;
             return;
         }
         if (size_ != capacity_) {
-            try {
-                new_buffer(size_);
-            }
-            catch(...) {
-                throw std::runtime_error("Exception in shrink_to_fit()");
-            }
+            new_buffer(size_);
         }
     }
 
     void clear() {
         if (!empty() && data_ != nullptr) {
-            std::destroy_n(data_, size_);
+            allocator.destroy_n(data_, size_);
             size_ = 0;
         }
     }
 
     void swap(vector& other) {
-        T* temp_data = data_;
-        data_ = other.data_;
-        other.data_ = temp_data;
-        size_t temp = size_;
-        size_ = other.size_;
-        other.size_ = temp;
-        temp = capacity_;
-        capacity_ = other.capacity_;
-        other.capacity_ = temp;
+        std::swap(data_, other.data_);
+        std::swap(capacity_, other.capacity_);
+        std::swap(size_, other.size_);
     }
 
     iterator begin() {
-        return &data_[0];
+        return data_;
     }
 
     iterator end() {
-        return &data_[size_];
+        return data_ + size_;
     }
 
     const_iterator begin() const {
-        return &data_[0];
+        return data_;
     }
 
     const_iterator end() const {
-        return &data_[size_];
+        return data_ + size_;
     }
 
     iterator insert(iterator pos, T const& element) {
@@ -189,29 +159,22 @@ struct vector
     }
 
     iterator insert(const_iterator pos, T const& element) {
+        if (pos == end()) {
+            push_back(element);
+            return end() - 1;
+        }
         vector<T> temp;
-        try {
-            if (pos == end()) {
-                push_back(element);
-                return end() - 1;
-            }
-            temp.reserve(capacity_);
-            for (auto it = begin(); it != pos; ++it) {
-                temp.push_back(*it);
-            }
-            temp.push_back(element);
-            iterator new_element = &temp.back();
-            for (auto it = pos; it != end(); ++it) {
-                temp.push_back(*it);
-            }
-            clear();
-            capacity_ = 0;
-            swap(temp);
-            return new_element;
+        temp.reserve(capacity_);
+        for (auto it = begin(); it != pos; ++it) {
+            temp.push_back(*it);
         }
-        catch(...) {
-            throw std::runtime_error("Exception in insert()");
+        temp.push_back(element);
+        iterator new_element = &temp.back();
+        for (auto it = pos; it != end(); ++it) {
+            temp.push_back(*it);
         }
+        swap(temp);
+        return new_element;
     }
 
     iterator erase(iterator pos) {
@@ -220,30 +183,19 @@ struct vector
     }
 
     iterator erase(const_iterator pos) {
-        try {
-            if (pos == end() - 1) {
-                pop_back();
-                return end();
-            }
-            vector<T> temp;
-            temp.reserve(capacity_);
-            iterator new_element = nullptr;
-            for (auto it = begin(); it != end(); ++it) {
-                if (it != pos) {
-                    temp.push_back(*it);
-                }
-                else {
-                    new_element = temp.end();
-                }
-            }
-            clear();
-            capacity_ = 0;
-            swap(temp);
-            return new_element;
+        if (pos == end() - 1) {
+            pop_back();
+            return end();
         }
-        catch(...) {
-            throw std::runtime_error("Exception in erase()");
+        vector<T> temp;
+        temp.reserve(capacity_);
+        iterator new_element = nullptr;
+        for (auto it = begin(); it != end(); ++it) {
+            if (it != pos) { temp.push_back(*it); }
+            else { new_element = temp.end(); }
         }
+        swap(temp);
+        return new_element;
     }
 
     iterator erase(iterator first, iterator last) {
@@ -253,31 +205,26 @@ struct vector
     }
 
     iterator erase(const_iterator first, const_iterator last) {
-        try {
-            vector<T> temp;
-            temp.reserve(capacity_);
-            size_t position = 0;
-            for (auto it = begin(); it != first; ++it, ++position) {
-                temp.push_back(*it);
-            }
-            for (auto it = last; it != end(); ++it) {
-                temp.push_back(*it);
-            }
-            swap(temp);
-            return begin() + position;
+        vector<T> temp;
+        temp.reserve(capacity_);
+        size_t position = 0;
+        for (auto it = begin(); it != first; ++it, ++position) {
+            temp.push_back(*it);
         }
-        catch(...) {
-             throw std::runtime_error("Exception in erase()");
+        for (auto it = last; it != end(); ++it) {
+            temp.push_back(*it);
         }
+        swap(temp);
+        return begin() + position;
     }
 
 private:
-    size_t increase_capacity() const  {
+    size_t get_new_capacity() const  {
         return (empty())? DEFAULT_INITIAL : capacity_ * ENSURE_COEFFICIENT;
     }
 
     void push_back_realloc(T const& element) {
-        new_buffer(increase_capacity());
+        new_buffer(get_new_capacity());
         push_back(element);
     }
 
@@ -286,44 +233,52 @@ private:
         size_t elements = size_;
         size_t constructed = 0;
         try {
-            temp_data = mem_allocator.allocate(new_capacity);
+            temp_data = allocator.allocate(new_capacity);
             if (!empty()) {
                 for (; constructed < elements; ++constructed) {
-                    mem_allocator.construct(temp_data + constructed, data_[constructed]);
+                    allocator.construct_at(temp_data + constructed, data_[constructed]);
                 }
             }
-            empty_swap(temp_data, new_capacity, elements);
+            this->~vector<T>();
+            data_ = temp_data;
+            capacity_ = new_capacity;
+            size_ = elements;
         }
         catch(...) {
             if (temp_data != nullptr) {
-                std::destroy_n(temp_data, constructed);
-                mem_allocator.deallocate(temp_data, new_capacity);
+                allocator.destroy_n(temp_data, constructed);
+                temp_data = allocator.deallocate(temp_data, new_capacity);
             }
             throw std::runtime_error("Failed to allocate new buffer");
         }
     }
 
-    void full_destroy() {
-        clear();
-        if (data_ != nullptr) {
-            mem_allocator.deallocate(data_, capacity_);
-            data_ = nullptr;
-        }
-    }
-
-    void empty_swap(T* temp_data, size_t capacity, size_t size) {
-        full_destroy();
-        data_ = temp_data;
-        capacity_ = capacity;
-        size_ = size;
-    }
-
-    size_t static const DEFAULT_INITIAL = 10;
-    size_t static const ENSURE_COEFFICIENT = 2;
+    size_t static constexpr DEFAULT_INITIAL = 10;
+    size_t static constexpr ENSURE_COEFFICIENT = 2;
 
     size_t size_;
     size_t capacity_;
 
-    allocator mem_allocator;
     T* data_;
+
+    struct My_Allocator {
+
+        T* allocate(size_t amount) { return static_cast<T*>(::operator new(sizeof (T) * amount)); }
+
+        void construct_at(T* ptr, T const & value) { ::new(ptr) T(value); }
+
+        void destroy_at(T* ptr) { ptr->~T(); }
+
+        void destroy_n(T* first, size_t amount) {
+            for (size_t el = 0; el < amount; ++el) {
+                destroy_at(first + el);
+            }
+        }
+
+        T* deallocate(T* ptr, size_t) {
+            ::operator delete(ptr);
+            return nullptr;
+        }
+
+    } allocator;
 };
