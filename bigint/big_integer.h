@@ -7,15 +7,12 @@
 #include <vector>
 #include <functional>
 
-struct big_integer;
-
-typedef std::function<uint32_t(uint32_t, uint32_t)> bit_function;
-typedef std::function<bool(bool, bool)> sign_function;
-typedef std::pair<big_integer, big_integer> operands;
-
 __extension__ typedef unsigned __int128 uint128_t;
 
-struct big_integer {
+using bit_function = std::function<uint32_t(uint32_t, uint32_t)>;
+using sign_function = std::function<bool(bool, bool)>;
+
+struct big_integer {   
     big_integer();
 
     big_integer(big_integer const &other);
@@ -96,15 +93,20 @@ struct big_integer {
 
     friend std::string to_string(big_integer const &a);
 
-
-    const uint32_t BITS_IN_CELL = 32;
-    const uint128_t BASE = static_cast<uint64_t>(UINT32_MAX) + 1;
-
+private:
     void trim();
+
+    big_integer absolute() const;
 
     big_integer binary() const;
 
     big_integer complementation() const;
+
+    std::pair<big_integer, big_integer> normalise(big_integer const &rhs, size_t m);
+
+    big_integer bit_operation(big_integer const &rhs, bit_function foo, sign_function bar);
+
+    uint32_t get_or_default(size_t index) const;
 
     std::pair<big_integer, uint32_t> simple_division(uint32_t x) const;
 
@@ -117,11 +119,13 @@ struct big_integer {
     bool is_zero() const;
     bool is_simple() const;
 
+    static constexpr uint32_t BITS_IN_CELL = 32;
+    static constexpr uint64_t _2_power_32 = static_cast<uint64_t>(UINT32_MAX) + 1;
+
     bool sign;
     std::vector<uint32_t> value;
-};
 
-big_integer bit_operation(big_integer const &a, big_integer const &b, bit_function foo, sign_function bar);
+};
 
 big_integer operator+(big_integer const &a, big_integer const &b);
 
