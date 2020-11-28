@@ -145,25 +145,13 @@ struct vector
     }
 
     iterator insert(iterator pos, T const& element) {
-        if (size_ < capacity_) {
-            push_back(element);
-            for (auto it = end() - 1; it != pos; --it) {
-                std::swap(*it, *(it - 1));
-            }
-            return pos;
+        ptrdiff_t offset = pos - begin();
+        push_back(element);
+        iterator new_position = begin() + offset;
+        for (auto it = &back(); it != new_position; --it) {
+             std::swap(*it, it[-1]);
         }
-        vector<T> temp;
-        temp.reserve(capacity_ + 1);
-        for (auto it = begin(); it != pos; ++it) {
-            temp.push_back(*it);
-        }
-        temp.push_back(element);
-        iterator new_element = &temp.back();
-        for (auto it = pos; it != end(); ++it) {
-            temp.push_back(*it);
-        }
-        swap(temp);
-        return new_element;
+        return new_position;
     }
 
     iterator insert(const_iterator pos, T const& element) {
@@ -171,7 +159,7 @@ struct vector
     }
 
     iterator erase(iterator pos) {
-        if (pos == end() - 1) {
+        if (pos == &back()) {
             pop_back();
             return end();
         }
@@ -186,12 +174,10 @@ struct vector
         for (; last != end(); ++last, ++first) {
             *first = *last;
         }
-        iterator result = first;
-        for (; first != last; ++first) {
-            first->~T();
-            size_--;
+        while(end() != first) {
+            pop_back();
         }
-        return result;
+        return first;
     }
 
     iterator erase(const_iterator first, const_iterator last) {
@@ -236,7 +222,7 @@ private:
                 }
                 ::operator delete(dest);
             }
-            std::rethrow_exception(std::current_exception());
+            throw;
         }
         return dest;
     }
