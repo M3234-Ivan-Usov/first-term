@@ -148,8 +148,8 @@ struct vector
         ptrdiff_t offset = pos - begin();
         push_back(element);
         iterator new_position = begin() + offset;
-        for (auto it = &back(); it != new_position; --it) {
-             std::swap(*it, it[-1]);
+        for (auto it = end() - 1; it != new_position; --it) {
+             std::swap(*it, *(it - 1));
         }
         return new_position;
     }
@@ -159,10 +159,6 @@ struct vector
     }
 
     iterator erase(iterator pos) {
-        if (pos == &back()) {
-            pop_back();
-            return end();
-        }
         return erase(pos, pos + 1);
     }
 
@@ -172,7 +168,7 @@ struct vector
 
     iterator erase(iterator first, iterator last) {
         for (; last != end(); ++last, ++first) {
-            *first = *last;
+            std::swap(*first, *last);
         }
         while(end() != first) {
             pop_back();
