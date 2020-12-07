@@ -6,6 +6,7 @@
 #include <iosfwd>
 #include <vector>
 #include <functional>
+#include <limits>
 
 __extension__ typedef unsigned __int128 uint128_t;
 
@@ -15,13 +16,13 @@ using sign_function = std::function<bool(bool, bool)>;
 struct big_integer {   
     big_integer();
 
-    big_integer(big_integer const &other);
+    big_integer(big_integer const &other) = default;
 
     big_integer(int a);
 
     explicit big_integer(std::string const &str);
 
-    ~big_integer();
+    ~big_integer() = default;
 
     big_integer &operator=(big_integer const &other);
 
@@ -94,9 +95,9 @@ struct big_integer {
     friend std::string to_string(big_integer const &a);
 
 private:
+    using lim = std::numeric_limits<uint32_t>;
+    using signed_lim = std::numeric_limits<int32_t>;
     void trim();
-
-    big_integer absolute() const;
 
     big_integer binary() const;
 
@@ -118,9 +119,10 @@ private:
 
     bool is_zero() const;
     bool is_simple() const;
+    bool absolute_compare(big_integer const & other);
 
     static constexpr uint32_t BITS_IN_CELL = 32;
-    static constexpr uint64_t _2_power_32 = static_cast<uint64_t>(UINT32_MAX) + 1;
+    static constexpr uint64_t BASE = static_cast<uint64_t>(lim::max()) + 1;
 
     bool sign;
     std::vector<uint32_t> value;
