@@ -125,7 +125,7 @@ big_integer &big_integer::operator-=(big_integer const &rhs) {
     int64_t carry = 0;
     int64_t next = 0;
     for (size_t i = 0; i < rhs.value.size() || carry; ++i) {
-        next = (static_cast<int64_t>(value[i]) - static_cast<int64_t>(rhs.value[i])) * reverse - carry;
+        next = (static_cast<int64_t>(value[i]) - static_cast<int64_t>(rhs.get_or_default(i))) * reverse - carry;
         carry = 0;
         if (next < 0) {
             carry = 1;
