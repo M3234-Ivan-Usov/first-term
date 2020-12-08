@@ -95,8 +95,6 @@ struct big_integer {
     friend std::string to_string(big_integer const &a);
 
 private:
-    using lim = std::numeric_limits<uint32_t>;
-    using signed_lim = std::numeric_limits<int32_t>;
     void trim();
 
     big_integer binary() const;
@@ -120,9 +118,6 @@ private:
     bool is_zero() const;
     bool is_simple() const;
     bool absolute_compare(big_integer const & other);
-
-    static constexpr uint32_t BITS_IN_CELL = 32;
-    static constexpr uint64_t BASE = static_cast<uint64_t>(lim::max()) + 1;
 
     bool sign;
     std::vector<uint32_t> value;

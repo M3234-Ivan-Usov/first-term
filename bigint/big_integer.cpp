@@ -5,6 +5,13 @@
 #include <stdexcept>
 #include <string>
 
+namespace  {
+    using lim = std::numeric_limits<uint32_t>;
+    using signed_lim = std::numeric_limits<int32_t>;
+    static constexpr uint32_t BITS_IN_CELL = 32;
+    static constexpr uint64_t BASE = static_cast<uint64_t>(lim::max()) + 1;
+}
+
 big_integer::big_integer() : sign(false) {
     value.push_back(0);
 }
