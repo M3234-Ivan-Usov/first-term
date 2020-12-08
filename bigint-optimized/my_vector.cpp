@@ -29,6 +29,9 @@ uint32_t my_vector::operator[](size_t index) const {
 }
 
 my_vector& my_vector::operator=(my_vector const &a) {
+    if (this == &a) {
+        return *this;
+    }
     this->~my_vector();
     copy(a);
     return *this;
@@ -78,6 +81,9 @@ void my_vector::resize(size_t new_size) {
         expand();
         big_object->resize(new_size);
     }
+    if (!is_big && new_size <= SMALL_SIZE) {
+        memset(small_object + elements, 0, new_size - elements);
+    }
     elements = new_size;
 }
 
@@ -89,7 +95,7 @@ void my_vector::expand() {
     if (is_big) {
         return;
     }
-    std::vector<uint32_t>* temp = new std::vector<uint32_t>(small_object, small_object + SMALL_SIZE);
+    std::vector<uint32_t>* temp = new std::vector<uint32_t>(small_object, small_object + elements);
     new(&big_object) shared_value(temp);
     is_big = true;
 }
