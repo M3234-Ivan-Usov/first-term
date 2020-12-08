@@ -1,9 +1,7 @@
 #include"my_vector.h"
 #include<cstring>
 
-my_vector::my_vector() : is_big(false), elements(0) {
-    memset(small_object, 0, sizeof(uint32_t) * SMALL_SIZE);
-}
+my_vector::my_vector() : is_big(false), elements(0) {}
 
 my_vector::my_vector(my_vector const & other) {
     copy(other);
@@ -81,8 +79,8 @@ void my_vector::resize(size_t new_size) {
         expand();
         big_object->resize(new_size);
     }
-    if (!is_big && new_size <= SMALL_SIZE) {
-        memset(small_object + elements, 0, new_size - elements);
+    if (!is_big && new_size <= SMALL_SIZE && new_size > elements) {
+        std::fill_n(small_object + elements, new_size - elements, 0);
     }
     elements = new_size;
 }
